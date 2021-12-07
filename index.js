@@ -2,7 +2,7 @@ const express = require('express')
 const { db } = require('./models/users.js')
 const cors = require('cors');
 const userRouter = require('./routes/users');
-const userAddress = require('./routes/address')
+const places = require('./routes/places')
 // const bikeTypesRouter = require('./routes/bike-types')
 // const bikeRouter = require('./routes/bike')
 
@@ -15,7 +15,7 @@ const port = process.env.PORT || 3000
 app.use(express.json())
 
 app.use(userRouter)
-app.use(userAddress)
+app.use(places)
 app.use(
   cors({
     allowedHeaders: ["sessionId", "Content-Type", "Authorization"],

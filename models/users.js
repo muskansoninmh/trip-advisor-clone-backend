@@ -4,7 +4,11 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 
 const userSchema = mongoose.Schema({
-    full_name: {
+    first_name: {
+        type: String,
+        trim: true,
+    },
+    last_name: {
         type: String,
         trim: true,
     },
@@ -22,7 +26,7 @@ const userSchema = mongoose.Schema({
         // required: true,
     },
 
-    number: {
+    contact: {
         type: String,
         minlength: 10,
         // unique: true,
@@ -67,9 +71,9 @@ const userSchema = mongoose.Schema({
 )
 
 userSchema.virtual('id', {
-    ref: 'users-address',
+    ref: 'places',
     localField: '_id',
-    foreignField: 'employeeID'
+    foreignField: 'userId'
 })
 
 // userSchema.virtual('bikes' , {

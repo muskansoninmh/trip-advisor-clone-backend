@@ -2,13 +2,13 @@ const express = require('express')
 const users = require('../models/users')
 const router = new express.Router()
 const auth = require('../auth')
-const usersDetails = require('../models/userDetails')
+const usersDetails = require('../models/places')
 const multer = require('multer')
 const sharp = require('sharp')
 const userAddress = require('../models/userAddress')
 
 
-router.post('/users', async (req, res) => {
+router.post('/register-user', async (req, res) => {
 
     const user = new users(req.body)
     try {
@@ -24,9 +24,9 @@ router.post('/users', async (req, res) => {
 
 })
 
-router.post('/users/login', async (req, res) => {
+router.post('/login-user', async (req, res) => {
     try {
-        // console.log(req.body.password,)
+        console.log(req.body.password,)
         const user = await users.findByCredentials(req.body.email, req.body.password)
 
 
@@ -39,18 +39,18 @@ router.post('/users/login', async (req, res) => {
     }
 })
 
-// router.post('/users/logout' , auth , async (req, res) => {
-//     try{
-//         req.user.tokens = req.user.tokens.filter((token) => {
-//             return token.token !== req.token         
-//         })
-//       await req.user.save()
-//         res.send()
-//     }
-//     catch(e){
-//         res.status(500).send()
-//     }
-// })
+router.post('/logout-user', auth, async (req, res) => {
+    try {
+        req.user.tokens = req.user.tokens.filter((token) => {
+            return token.token !== req.token
+        })
+        await req.user.save()
+        res.send()
+    }
+    catch (e) {
+        res.status(500).send()
+    }
+})
 
 // router.post('/add-users', async (req, res) => {
 //     const fixed = { name: req.body.name, email: req.body.email, password: req.body.password, age: req.body.age, number: req.body.number }
