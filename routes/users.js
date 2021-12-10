@@ -12,7 +12,10 @@ router.post('/register-user', async (req, res) => {
 
     const user = new users(req.body)
     try {
-
+        const validEmail = await users.findOne({ isDeleted: false, email: req.body.email })
+        if (validEmail) {
+            return res.status(404).send({ error: "Email should be unique" })
+        }
         await user.save()
         const token = await user.generateAuthToken()
         res.status(201).send({ user, token })
@@ -75,7 +78,27 @@ router.post('/logout-user', auth, async (req, res) => {
 //         res.status(400).send(e)
 //     }
 // })
+router.post('/add-admin', auth, async (req, res) => {
 
+    const user = new users({ ...req.body, role: "Admin" })
+
+    try {
+        const validEmail = await users.findOne({ isDeleted: false, email: req.body.email })
+        if (validEmail) {
+            return res.status(404).send({ error: "Email should be unique" })
+        }
+
+        await user.save()
+        res.status(201).send(user)
+    }
+    catch (e) {
+
+        res.status(400).send(e)
+
+
+
+    }
+});
 
 router.post('/add-users', async (req, res) => {
 
@@ -95,24 +118,19 @@ router.post('/add-users', async (req, res) => {
     }
     catch (e) {
 
-        // if (e.keyPattern.number) {
         res.status(400).send(e)
-        // console.log(e.keyPattern.number);
-        // }
-        // if (e.keyPattern.email) {
-        //     res.status(400).send({ error: "Email should be unique" })
-        // }
+
 
 
     }
 });
 
-router.get('/users/get-all-employees', async (req, res) => {
+router.get('/users/get-all-users', auth, async (req, res) => {
 
-
+    console.log("dfgfdg");
     try {
 
-        let filter = { isDeleted: false }
+        let filter = { role: "User" }
         if (req.query.name) {
             filter = {
                 ...filter,
@@ -135,15 +153,10 @@ router.get('/users/get-all-employees', async (req, res) => {
                             $options: "i",
                         },
                     },
-                    {
-                        department: {
-                            $regex: req.query.name,
-                            $options: "i",
-                        },
-                    },
+
 
                     {
-                        number: {
+                        contact: {
                             $regex: req.query.name,
 
                         },
@@ -151,10 +164,10 @@ router.get('/users/get-all-employees', async (req, res) => {
                 ],
             }
         }
-        console.log(filter['$or']);
+
         users.find({ ...filter }).sort({ 'createdAt': -1 }).limit(Number(req.query.limit)).skip(Number(req.query.skip)).exec(async function (err, user) {
             const count = await users.find({ ...filter }).count({});
-
+            console.log(user);
             res.send({ user, count })
 
         })

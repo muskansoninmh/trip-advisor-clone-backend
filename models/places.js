@@ -53,8 +53,34 @@ const placesSchema = mongoose.Schema({
     },
     address: {
         type: String
-    }
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
 
+    averageRating: {
+        type: Number,
+        default: 2
+    },
+    reviews: [{
+        reviewTitle: {
+            type: String,
+            trim: true
+        },
+        reviewDetails: {
+            type: String,
+            trim: true
+        },
+        UserId: {
+            type: mongoose.Schema.Types.ObjectId
+        },
+        rating: {
+            type: Number,
+            default: 0
+
+        }
+    }],
 
 },
 
@@ -76,6 +102,12 @@ const placesSchema = mongoose.Schema({
 //     localField: "_id",
 //     foreignField : "owner"
 // })
+
+placesSchema.virtual('id', {
+    ref: 'images',
+    localField: '_id',
+    foreignField: 'placesID'
+})
 
 
 

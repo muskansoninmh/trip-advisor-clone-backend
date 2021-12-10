@@ -3,6 +3,7 @@ const { db } = require('./models/users.js')
 const cors = require('cors');
 const userRouter = require('./routes/users');
 const places = require('./routes/places')
+const images = require('./routes/images')
 // const bikeTypesRouter = require('./routes/bike-types')
 // const bikeRouter = require('./routes/bike')
 
@@ -16,6 +17,7 @@ app.use(express.json())
 
 app.use(userRouter)
 app.use(places)
+app.use(images)
 app.use(
   cors({
     allowedHeaders: ["sessionId", "Content-Type", "Authorization"],

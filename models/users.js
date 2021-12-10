@@ -52,7 +52,10 @@ const userSchema = mongoose.Schema({
     }
     ,
 
-
+    role: {
+        type: "String",
+        default: "User"
+    },
 
     avatar: {
         type: Buffer
@@ -101,9 +104,9 @@ userSchema.methods.toJSON = function () {
 
 userSchema.methods.generateAuthToken = async function () {
     const user = this
+    console.log("sdsfsdf");
 
-
-    const token = jwt.sign({ _id: user._id.toString() }, 'thisismydemoproject')
+    const token = jwt.sign({ _id: user._id.toString(), role: user.role }, 'thisismydemoproject')
     console.log(token)
 
     user.tokens = user.tokens.concat({ token })
