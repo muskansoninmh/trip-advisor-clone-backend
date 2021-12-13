@@ -7,6 +7,8 @@ const multer = require('multer')
 const sharp = require('sharp')
 const places = require('../models/places')
 const users = require('../models/users')
+const cartPlaces = require('../models/cartPlaces')
+const { findOne } = require('../models/users')
 
 const avatar = multer({
 
@@ -23,7 +25,7 @@ const avatar = multer({
 router.post('/place/:id/image', avatar.single('image'), async (req, res) => {
     console.log(req.file)
     const place = await places.findById(req.params.id)
-    const buffer = await sharp(req.file.buffer).resize({ width: 250, height: 250 }).png().toBuffer()
+    const buffer = await sharp(req.file.buffer).png().toBuffer()
     place.avatar = buffer
     // console.log(place.avatar);
     await place.save()
@@ -34,9 +36,9 @@ router.post('/place/:id/image', avatar.single('image'), async (req, res) => {
     res.status(400).send({ error: error.message })
 })
 
-router.post('/add-place/:id', auth, async (req, res) => {
+router.post('/add-place', auth, async (req, res) => {
     console.log(req.params.id);
-    const place = new places({ ...req.body, userId: req.params.id })
+    const place = new places({ ...req.body, userId: req.user._id })
     try {
 
         await place.save()
@@ -53,16 +55,82 @@ router.get('/get-all-places', async (req, res) => {
 
 
     try {
+        console.log(req.query.limit, req.query.skip);
+        let filters = [{ $match: { isDeleted: false } }];
+        let sortFilter = { 'createdAt': -1 }
+
+        if (req.query.rating) {
+            filters.push({
+                $sort: {
+                    averageRating: -1
+                }
+
+            })
+        }
+        if (req.query.search) {
+            filters.push({
+                $match: {
+
+                    $or: [{
+                        [`state.id`]: {
+                            $regex: req.query.search,
+                            $options: "i"
+                        }
+                    },
+                    {
+                        [`city.name`]: {
+                            $regex: req.query.search,
+                            $options: "i"
+                        }
+                    },
+                    ]
+                }
+
+            })
+        }
+        const count = await places.find({ isDeleted: false }).count({});
+        console.log(filters);
+        const user = await places.aggregate(filters)
+        // console.log("user: ", user[0].averageRating)
+        return res.send({ user, count })
+
+        // .sort({ ...sortFilter }).limit(Number(req.query.limit)).skip(Number(req.query.skip)).exec(async function (err, user) {
+        //     const count = await places.find({ ...filter }).count({});
+
+        //     res.send({ user, count })
+        //     console.log(user[0].state);
+
+        // })
+        // }
+
+
+
+    }
+    catch (e) {
+        console.log("e", e)
+        res.status(400).send(e)
+    }
+})
+router.get('/get-one-place-of-each-city', async (req, res) => {
+
+    const state = [];
+    const uniqueplace = []
+    try {
 
         let filter = { isDeleted: false }
 
         places.find({ ...filter }).sort({ 'createdAt': -1 }).limit(Number(req.query.limit)).skip(Number(req.query.skip)).exec(async function (err, user) {
-            const count = await places.find({ ...filter }).count({});
-
-            res.send({ user, count })
+            user.map((row) => {
+                console.log(row.state.name)
+                if (!state.includes(row.state.name)) { state.push(row.state.name); uniqueplace.push(row) }
+            }
+            )
+            console.log(state);
+            res.send({ uniqueplace })
 
         })
         // }
+
 
 
 
@@ -71,7 +139,6 @@ router.get('/get-all-places', async (req, res) => {
         res.status(400).send(e)
     }
 })
-
 
 router.get('/auth-get-all-places', auth, async (req, res) => {
     console.log(req.user._id);
@@ -82,8 +149,9 @@ router.get('/auth-get-all-places', auth, async (req, res) => {
 
         places.find({ ...filter }).sort({ 'createdAt': -1 }).limit(Number(req.query.limit)).skip(Number(req.query.skip)).exec(async function (err, user) {
             const count = await places.find({ ...filter }).count({});
+            const countUser = await users.find({ isDeleted: false, role: "User" }).count({})
 
-            res.send({ user, count })
+            res.send({ user, count, countUser })
 
         })
         // }
@@ -95,7 +163,31 @@ router.get('/auth-get-all-places', auth, async (req, res) => {
         res.status(400).send(e)
     }
 })
+router.get('/get-place/:id', async (req, res) => {
 
+
+    try {
+
+        const place = await places.findOne({ _id: req.params.id })
+
+        const cart = await cartPlaces.findOne({ placeId: req.params.id })
+
+        if (cart) {
+            place.trip = cart.trip;
+            res.send(place)
+        }
+        else {
+            res.send(place)
+        }
+        // }
+
+
+
+    }
+    catch (e) {
+        res.status(400).send(e)
+    }
+})
 
 
 router.post('/edit-place/:id', auth, async (req, res) => {
@@ -159,4 +251,45 @@ router.get('/delete-place/:id', auth, async (req, res) => {
         res.status(400).send(e)
     }
 })
+router.post('/trip/:id', auth, async (req, res) => {
+
+    const place = await places.findById(req.params.id)
+
+    try {
+        const cart = await cartPlaces.findOne({ userId: req.user._id, placeId: req.params.id })
+        if (cart) {
+            cart.trip = !cart.trip
+
+            await cart.save();
+            res.status(200).send(cart)
+        }
+        else {
+            const cart = new cartPlaces({ userId: req.user._id, placeId: req.params.id, trip: true, placeName: place.name, placeImage: place.avatar })
+            await cart.save();
+            res.status(201).send(cart)
+        }
+
+
+
+    }
+    catch (e) {
+        res.status(400).send(e)
+    }
+})
+
+router.get('/get-all-trips', auth, async (req, res) => {
+
+    try {
+
+        const cart = await cartPlaces.find({ userId: req.user._id, trip: true })
+
+        res.status(200).send(cart);
+
+    }
+    catch (e) {
+        res.status(400).send(e)
+    }
+})
+
+
 module.exports = router

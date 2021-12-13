@@ -63,6 +63,10 @@ const placesSchema = mongoose.Schema({
         type: Number,
         default: 2
     },
+    trip: {
+        type: Boolean,
+        default: false
+    },
     reviews: [{
         reviewTitle: {
             type: String,
@@ -73,7 +77,8 @@ const placesSchema = mongoose.Schema({
             trim: true
         },
         UserId: {
-            type: mongoose.Schema.Types.ObjectId
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'users'
         },
         rating: {
             type: Number,
@@ -81,6 +86,7 @@ const placesSchema = mongoose.Schema({
 
         }
     }],
+
 
 },
 
