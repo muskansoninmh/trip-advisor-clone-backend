@@ -18,13 +18,7 @@ const cartPlacesSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'places'
     },
-    placeImage: {
-        type: Buffer,
 
-    },
-    placeName: {
-        type: String,
-    }
 
 },
 

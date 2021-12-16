@@ -71,28 +71,63 @@ router.get('/get-all-places', async (req, res) => {
             filters.push({
                 $match: {
 
-                    $or: [{
-                        [`state.id`]: {
-                            $regex: req.query.search,
-                            $options: "i"
-                        }
-                    },
-                    {
-                        [`city.name`]: {
-                            $regex: req.query.search,
-                            $options: "i"
-                        }
-                    },
+                    $or: [
+                        {
+                            [`state.name`]: {
+                                $regex: req.query.search,
+                                $options: "i"
+                            }
+                        },
+                        {
+                            [`city.name`]: {
+                                $regex: req.query.search,
+                                $options: "i"
+                            }
+                        },
+                        {
+                            [`country.name`]: {
+                                $regex: req.query.search,
+                                $options: "i"
+                            }
+                        },
+                        {
+                            [`name`]: {
+                                $regex: req.query.search,
+                                $options: "i"
+                            }
+                        },
+
                     ]
                 }
 
             })
         }
-        const count = await places.find({ isDeleted: false }).count({});
-        console.log(filters);
+        if (Number(req.query.limit)) {
+            filters.push(
+                {
+                    $skip: Number(req.query.skip)
+                },
+                { $limit: Number(req.query.limit) },
+            )
+        }
+
         const user = await places.aggregate(filters)
+        filters.pop(
+
+            { $limit: Number(req.query.limit) },
+        )
+        filters.pop(
+            {
+                $skip: Number(req.query.skip)
+            }
+
+        )
+
+        console.log(filters);
+        const count = await (await places.aggregate(filters)).length
         // console.log("user: ", user[0].averageRating)
-        return res.send({ user, count })
+        console.log(count);
+        return res.status(200).send({ user, count })
 
         // .sort({ ...sortFilter }).limit(Number(req.query.limit)).skip(Number(req.query.skip)).exec(async function (err, user) {
         //     const count = await places.find({ ...filter }).count({});
@@ -126,7 +161,7 @@ router.get('/get-one-place-of-each-city', async (req, res) => {
             }
             )
             console.log(state);
-            res.send({ uniqueplace })
+            res.status(200).send({ uniqueplace })
 
         })
         // }
@@ -141,7 +176,7 @@ router.get('/get-one-place-of-each-city', async (req, res) => {
 })
 
 router.get('/auth-get-all-places', auth, async (req, res) => {
-    console.log(req.user._id);
+
 
     try {
 
@@ -235,16 +270,16 @@ router.post('/edit-place/:id', auth, async (req, res) => {
 
 router.get('/delete-place/:id', auth, async (req, res) => {
 
-    const user_address = await places.findById({ _id: req.params.id })
+    const place = await places.findById({ _id: req.params.id })
 
 
 
     try {
 
-        user_address.isDeleted = true;
-        await user_address.save()
+        place.isDeleted = true;
+        await place.save()
 
-        res.status(201).send(user_address)
+        res.status(201).send(place)
 
     }
     catch (e) {
@@ -264,7 +299,7 @@ router.post('/trip/:id', auth, async (req, res) => {
             res.status(200).send(cart)
         }
         else {
-            const cart = new cartPlaces({ userId: req.user._id, placeId: req.params.id, trip: true, placeName: place.name, placeImage: place.avatar })
+            const cart = new cartPlaces({ userId: req.user._id, placeId: req.params.id, trip: true })
             await cart.save();
             res.status(201).send(cart)
         }
@@ -280,16 +315,23 @@ router.post('/trip/:id', auth, async (req, res) => {
 router.get('/get-all-trips', auth, async (req, res) => {
 
     try {
-
-        const cart = await cartPlaces.find({ userId: req.user._id, trip: true })
-
-        res.status(200).send(cart);
+        const placeList = [];
+        const trip = await cartPlaces.find({ userId: req.user._id, trip: true })
+        for (i of trip) {
+            const place = await places.findById(i.placeId)
+            placeList.push(place)
+        }
+        console.log(placeList);
+        res.status(200).send({ trip, placeList });
 
     }
     catch (e) {
+        console.log(e);
         res.status(400).send(e)
     }
 })
+
+
 
 
 module.exports = router

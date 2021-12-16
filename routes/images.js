@@ -43,7 +43,7 @@ router.get('/get-images/:id', async (req, res) => {
         await images.find({ placesID: req.params.id, isDeleted: false }).sort({ 'createdAt': -1 }).exec(async function (err, image) {
 
 
-            res.send(image)
+            res.status(200).send(image)
 
         });
     }

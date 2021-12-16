@@ -28,7 +28,7 @@ const userSchema = mongoose.Schema({
 
     contact: {
         type: String,
-        minlength: 10,
+        // minlength: 10,
         // unique: true,
     },
     email: {
