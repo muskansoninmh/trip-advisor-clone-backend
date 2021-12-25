@@ -1,7 +1,8 @@
 const mongoose = require('mongoose')
 const validator = require('validator')
 const bcrypt = require('bcryptjs')
-
+function getDecimalNumber(val) { return (val); }
+function setDecimalNumber(val) { return (val); }
 
 const placesSchema = mongoose.Schema({
 
@@ -33,6 +34,12 @@ const placesSchema = mongoose.Schema({
         required: true,
         ref: 'users'
     },
+    openingHours: {
+        type: Date
+    },
+    closingHours: {
+        type: Date
+    },
     month: {
         type: String
     },
@@ -61,30 +68,48 @@ const placesSchema = mongoose.Schema({
 
     averageRating: {
         type: Number,
-        default: 2
+        get: getDecimalNumber,
+        set: setDecimalNumber
     },
     trip: {
         type: Boolean,
         default: false
     },
+    contactNo: {
+        type: String
+    },
+    website: {
+        type: String
+    },
+    roomOrMembers: {
+        type: Number
+    },
+    availableRoomsOrMembers: {
+        type: Number,
+
+    },
     reviews: [{
-        reviewTitle: {
+        review: {
             type: String,
             trim: true
         },
-        reviewDetails: {
+
+        UserName: {
             type: String,
-            trim: true
-        },
-        UserId: {
-            type: mongoose.Schema.Types.ObjectId,
             ref: 'users'
         },
         rating: {
             type: Number,
             default: 0
 
-        }
+        },
+        userId:
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            required: true,
+            ref: 'users'
+        },
+
     }],
 
 
@@ -96,6 +121,12 @@ const placesSchema = mongoose.Schema({
 
 
 )
+
+placesSchema.virtual('id', {
+    ref: 'bookedPlaces',
+    localField: '_id',
+    foreignField: 'placeId'
+})
 
 // placesSchema.virtual('bikes' , {
 //     ref : 'Bike-Types',

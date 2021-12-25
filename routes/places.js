@@ -23,7 +23,7 @@ const avatar = multer({
     }
 })
 router.post('/place/:id/image', avatar.single('image'), async (req, res) => {
-    console.log(req.file)
+
     const place = await places.findById(req.params.id)
     const buffer = await sharp(req.file.buffer).png().toBuffer()
     place.avatar = buffer
@@ -37,8 +37,8 @@ router.post('/place/:id/image', avatar.single('image'), async (req, res) => {
 })
 
 router.post('/add-place', auth, async (req, res) => {
-    console.log(req.params.id);
-    const place = new places({ ...req.body, userId: req.user._id })
+
+    const place = new places({ ...req.body, userId: req.user._id, availableRoomsOrMembers: req.body.roomOrMembers })
     try {
 
         await place.save()
@@ -55,11 +55,11 @@ router.get('/get-all-places', async (req, res) => {
 
 
     try {
-        console.log(req.query.limit, req.query.skip);
+
         let filters = [{ $match: { isDeleted: false } }];
         let sortFilter = { 'createdAt': -1 }
 
-        if (req.query.rating) {
+        if (req.query.rating === true) {
             filters.push({
                 $sort: {
                     averageRating: -1
@@ -102,16 +102,35 @@ router.get('/get-all-places', async (req, res) => {
 
             })
         }
+        if (req.query.category) {
+            filters.push({
+
+                $match: {
+                    [`category`]: {
+                        $regex: req.query.category,
+                        $options: "i"
+                    }
+                }
+            })
+        }
+
+
         if (Number(req.query.limit)) {
+
+
             filters.push(
                 {
                     $skip: Number(req.query.skip)
-                },
-                { $limit: Number(req.query.limit) },
-            )
+                })
+            filters.push({
+                $limit: Number(req.query.limit)
+            })
+
         }
 
+
         const user = await places.aggregate(filters)
+
         filters.pop(
 
             { $limit: Number(req.query.limit) },
@@ -123,20 +142,13 @@ router.get('/get-all-places', async (req, res) => {
 
         )
 
-        console.log(filters);
-        const count = await (await places.aggregate(filters)).length
-        // console.log("user: ", user[0].averageRating)
-        console.log(count);
+
+        const count = (await places.aggregate(filters)).length
+
+
         return res.status(200).send({ user, count })
 
-        // .sort({ ...sortFilter }).limit(Number(req.query.limit)).skip(Number(req.query.skip)).exec(async function (err, user) {
-        //     const count = await places.find({ ...filter }).count({});
 
-        //     res.send({ user, count })
-        //     console.log(user[0].state);
-
-        // })
-        // }
 
 
 
@@ -160,7 +172,7 @@ router.get('/get-one-place-of-each-city', async (req, res) => {
                 if (!state.includes(row.state.name)) { state.push(row.state.name); uniqueplace.push(row) }
             }
             )
-            console.log(state);
+
             res.status(200).send({ uniqueplace })
 
         })
@@ -228,12 +240,12 @@ router.get('/get-place/:id', async (req, res) => {
 router.post('/edit-place/:id', auth, async (req, res) => {
     console.log(req.body);
     const updates = Object.keys(req.body)
-    const allowedUpdates = ['name', 'description', "category", "country", "city", "state", "season", "month", "package", "address"]
+    const allowedUpdates = ['name', 'description', "category", "country", "city", "state", "season", "month", "package", "address", "openingHours", "closingHours", "contactNo", "website", "roomOrMembers"]
 
-    const isValid = updates.every((update) => allowedUpdates.includes(update))
+    const isValid = updates.some((update) => allowedUpdates.includes(update))
 
     if (!isValid) {
-        console.log("sdkjsdkl");
+
         return res.status(404).send({ error: 'Invalid Update' })
 
     }
@@ -252,8 +264,11 @@ router.post('/edit-place/:id', auth, async (req, res) => {
 
         updates.forEach((update) => {
 
-            console.log("ddfsdfdf");
+
             user[update] = req.body[update];
+            if (update === "roomOrMembers") {
+                user["availableRoomsOrMembers"] = req.body[update]
+            }
 
         });
 
@@ -321,7 +336,7 @@ router.get('/get-all-trips', auth, async (req, res) => {
             const place = await places.findById(i.placeId)
             placeList.push(place)
         }
-        console.log(placeList);
+
         res.status(200).send({ trip, placeList });
 
     }
@@ -329,8 +344,119 @@ router.get('/get-all-trips', auth, async (req, res) => {
         console.log(e);
         res.status(400).send(e)
     }
+});
+
+router.post('/add-review', auth, async (req, res) => {
+    try {
+
+        const place = await places.findById(req.query.id);
+
+        place.reviews = place.reviews.concat({
+
+            review: req.body.review,
+            rating: req.body.rating,
+            UserName: req.user.first_name + " " + req.user.last_name,
+            userId: req.user._id
+
+        })
+
+        let ar = ((place.averageRating * (place.reviews.length - 1)) + (req.body.rating)) / place.reviews.length
+        console.log(ar);
+        place.averageRating = ar.toFixed(2);
+        await place.save();
+        res.status(201).send(place.reviews[place.reviews.length - 1])
+    }
+    catch (e) {
+        console.log(e);
+        res.status(400).send(e)
+    }
+
 })
 
+router.get('/delete-review', auth, async (req, res) => {
+    try {
+
+        const place = await places.findById(req.query.id);
+
+
+        const index = place.reviews.findIndex(i => i.userId.toString() === req.user._id.toString())
+
+        let ar = ((place.averageRating * place.reviews.length) - place.reviews[index].rating) / (place.reviews.length - 1);
+
+        place.reviews = await place.reviews.filter((rvw) =>
+            rvw.userId.toString() !== req.user._id.toString())
+
+
+        place.averageRating = ar.toFixed(2);
+
+        await place.save();
+        res.status(200).send({ averageRating: place.averageRating })
+    }
+    catch (e) {
+        console.log(e);
+        res.status(400).send(e)
+    }
+
+});
+router.post('/edit-review', auth, async (req, res) => {
+
+    const updates = Object.keys(req.body)
+    let index = 0;
+    const allowedUpdates = ['rating', 'review']
+
+    const isValid = updates.every((update) => allowedUpdates.includes(update))
+
+    if (!isValid) {
+
+        return res.status(404).send({ error: 'Invalid Update' })
+
+    }
+
+    try {
+
+
+        const place = await places.findById(req.query.id)
+        const index = place.reviews.findIndex(i => i.userId.toString() === req.user._id.toString())
+
+        let ar = (((place.averageRating * place.reviews.length) - place.reviews[index].rating) + req.body.rating) / place.reviews.length;
+        console.log(ar);
+
+
+        places.findOneAndUpdate(
+            {
+                '_id': req.query.id
+            },
+            {
+                $set: {
+                    'reviews.$[element]': {
+                        'rating': req.body.rating,
+                        'review': req.body.review,
+                        'userId': req.user._id,
+                        'UserName': req.user.first_name + " " + req.user.last_name,
+                        // '_id': place.reviews[index]._id
+
+                    },
+                    'averageRating': ar.toFixed(2)
+                },
+            },
+            { arrayFilters: [{ 'element.userId': req.user._id }], "new": true },
+
+            (err, plc) => {
+                if (err) res.status(400)
+                console.log(plc.reviews);
+                res.status(200)
+                    .send({ review: plc.reviews[index], averageRating: plc.averageRating })
+            }
+        )
+
+
+
+
+    }
+    catch (e) {
+        res.status(400).send({ error: e.message })
+    }
+});
 
 
 

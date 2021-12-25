@@ -25,11 +25,17 @@ const userSchema = mongoose.Schema({
         type: Object,
         // required: true,
     },
+    address: {
+        type: String
+    },
 
     contact: {
         type: String,
-        // minlength: 10,
+        minlength: 10,
         // unique: true,
+    },
+    aboutYou: {
+        type: String
     },
     email: {
         type: String,
@@ -75,6 +81,11 @@ const userSchema = mongoose.Schema({
 
 userSchema.virtual('id', {
     ref: 'places',
+    localField: '_id',
+    foreignField: 'userId'
+})
+userSchema.virtual('id', {
+    ref: 'bookedPlaces',
     localField: '_id',
     foreignField: 'userId'
 })

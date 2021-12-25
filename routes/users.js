@@ -5,8 +5,18 @@ const auth = require('../auth')
 const usersDetails = require('../models/places')
 const multer = require('multer')
 const sharp = require('sharp')
-const userAddress = require('../models/userAddress')
 
+
+router.get('/verify-token', auth, (req, res) => {
+    try {
+        if (req.user._id) {
+            res.status(200).send(req.user)
+        }
+    }
+    catch (e) {
+        res.status(400).send(e)
+    }
+})
 
 router.post('/register-user', async (req, res) => {
 
@@ -14,7 +24,7 @@ router.post('/register-user', async (req, res) => {
     try {
         const validEmail = await users.findOne({ isDeleted: false, email: req.body.email })
         if (validEmail) {
-            return res.status(404).send({ error: "Email should be unique" })
+            return res.status(404).send({ error: "Email already exists" })
         }
         await user.save()
         const token = await user.generateAuthToken()
@@ -55,29 +65,6 @@ router.post('/logout-user', auth, async (req, res) => {
     }
 })
 
-// router.post('/add-users', async (req, res) => {
-//     const fixed = { name: req.body.name, email: req.body.email, password: req.body.password, age: req.body.age, number: req.body.number }
-//     // console.log(req.body);
-
-//     const user = new users(fixed)
-//     try {
-
-//         await user.save()
-//         // console.log("saved");
-//         // const token = await user.generateAuthToken()
-//         const userDetails = new usersDetails({ address: req.body.address, salary: req.body.salary, zip: req.body.zip, country: req.body.country, employeeID: user._id })
-//         // console.log(userDetails);
-//         await userDetails.save();
-//         // console.log("Details Saved");
-//         // console.log({ user: { ...user, address: userDetails.address } });
-//         res.status(201).send(user)
-//         // res.status(201).send({ user, token })
-
-//     }
-//     catch (e) {
-//         res.status(400).send(e)
-//     }
-// })
 router.post('/add-admin', auth, async (req, res) => {
 
     const user = new users({ ...req.body, role: "Admin" })
@@ -265,10 +252,10 @@ router.get('/delete-user/:id', async (req, res) => {
     res.send(user)
 })
 
-router.post('/edit-users/:id', async (req, res) => {
+router.post('/edit-users/:id', auth, async (req, res) => {
     //console.log(req.body);
     const updates = Object.keys(req.body)
-    const allowedUpdates = ['first_name', 'last_name', "email", "number", "birth_date", "department", "joining_date", "salary"]
+    const allowedUpdates = ['first_name', 'last_name', "email", "contact", "country", "city", "state", "address", "aboutYou"]
 
     const isValid = updates.every((update) => allowedUpdates.includes(update))
 
@@ -280,16 +267,9 @@ router.post('/edit-users/:id', async (req, res) => {
 
     try {
 
-        // const task = await tasks.findById(req.params.id)
 
         const user = await users.findOne({ _id: req.params.id })
-        // const userDetails = await usersDetails.findOne({ employeeID: user._id })
-        // console.log(user, userDetails);
 
-        // const user = await users.findByIdAndUpdate(req.params.id , req.body , {
-        //     new: true, 
-        //     runValidators : true
-        // })
 
         if (!user) {
 
@@ -297,17 +277,15 @@ router.post('/edit-users/:id', async (req, res) => {
         }
 
         updates.forEach((update) => {
-            // if (update !== "address" && update !== "salary" && update !== "country" && update !== "zip") {
-            // console.log("ddfsdfdf");
+
             user[update] = req.body[update];
 
         });
 
-        // console.log("sllhjdjl", user);
+
         await user.save()
-        // await userDetails.save()
-        // console.log("sllhjdjl", user);
-        res.send(user)
+
+        res.status(200).send(user)
     }
     catch (e) {
         if (e.keyPattern.number) {
@@ -339,9 +317,9 @@ router.post('/users/:id/image', avatar.single('image'), async (req, res) => {
     const user = await users.findById(req.params.id)
     const buffer = await sharp(req.file.buffer).resize({ width: 250, height: 250 }).png().toBuffer()
     user.avatar = buffer
-    // console.log(user.avatar);
+
     await user.save()
-    // console.log("req--->", user._id)
+
     res.set("Content-Type", 'image/jpg')
     res.send(new Buffer(user.avatar).toString('base64'))
 }, (error, req, res, next) => {
