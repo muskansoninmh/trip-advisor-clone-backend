@@ -9,6 +9,7 @@ const places = require('../models/places')
 const users = require('../models/users')
 const cartPlaces = require('../models/cartPlaces')
 const { findOne } = require('../models/users')
+const bookPlaces = require('../models/bookPlaces')
 
 const avatar = multer({
 
@@ -418,13 +419,14 @@ router.post('/edit-review', auth, async (req, res) => {
         const place = await places.findById(req.query.id)
         const index = place.reviews.findIndex(i => i.userId.toString() === req.user._id.toString())
 
-        let ar = (((place.averageRating * place.reviews.length) - place.reviews[index].rating) + req.body.rating) / place.reviews.length;
-        console.log(ar);
+        let ar = (((place.averageRating * place?.reviews?.length) - place?.reviews[index].rating) + req.body.rating) / place.reviews?.length;
+
 
 
         places.findOneAndUpdate(
             {
-                '_id': req.query.id
+                '_id': req.query.id,
+                'reviews.userId': req.user._id
             },
             {
                 $set: {
@@ -434,13 +436,11 @@ router.post('/edit-review', auth, async (req, res) => {
                         'userId': req.user._id,
                         'UserName': req.user.first_name + " " + req.user.last_name,
                         // '_id': place.reviews[index]._id
-
                     },
                     'averageRating': ar.toFixed(2)
                 },
             },
             { arrayFilters: [{ 'element.userId': req.user._id }], "new": true },
-
             (err, plc) => {
                 if (err) res.status(400)
                 console.log(plc.reviews);
@@ -458,6 +458,59 @@ router.post('/edit-review', auth, async (req, res) => {
     }
 });
 
+router.get('/sales', auth, async (req, res) => {
+    try {
 
+
+
+        const sales = await bookPlaces.aggregate([
+
+            {
+
+                $project: {
+                    'amount': true,
+                    'month': { $month: '$createdAt' },
+                    'createdAt': true,
+                    'year': {
+                        $cond: [
+                            { $eq: [{ $year: "$createdAt" }, Number(req.query.year)] },
+                            "$amount",
+                            0
+
+                        ]
+                    }
+
+                },
+            },
+            {
+                $group: {
+
+                    _id: '$month',
+                    total: {
+                        '$sum': '$year'
+                    }
+                }
+            },
+            {
+                $sort: { "_id": 1 }
+            }
+
+        ])
+        console.log(sales);
+        let filter = { isDeleted: false, userId: req.user._id }
+
+
+        const count = await places.find({ ...filter }).count({});
+        const countUser = await users.find({ isDeleted: false, role: "User" }).count({})
+
+
+        res.status(200).send({ sales, count, countUser })
+    }
+    catch (e) {
+        console.log(e);
+        res.status(400).send(e)
+    }
+
+});
 
 module.exports = router

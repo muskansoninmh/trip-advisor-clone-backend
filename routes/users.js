@@ -112,7 +112,7 @@ router.post('/add-users', async (req, res) => {
     }
 });
 
-router.get('/users/get-all-users', auth, async (req, res) => {
+router.get('/users/get-all-users', async (req, res) => {
 
     console.log("dfgfdg");
     try {

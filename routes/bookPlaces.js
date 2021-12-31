@@ -7,7 +7,8 @@ const bookPlaces = require('../models/bookPlaces')
 const path = require('path')
 const shortid = require('shortid')
 const Razorpay = require('razorpay')
-console.log(__dirname);
+
+
 router.get('/tripadvisorLogo.png', (req, res) => {
     res.sendFile(path.join(__dirname, 'tripadvisorLogo.png'))
 })

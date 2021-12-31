@@ -25,7 +25,7 @@ app.use(
     origin: "*",
     optionsSuccessStatus: 200,
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-    preflightContinue: false,
+
   })
 );
 // app.use(bikeTypesRouter)
