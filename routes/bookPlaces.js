@@ -1,5 +1,5 @@
 const express = require('express')
-
+const mongoose = require('mongoose')
 const router = new express.Router()
 const auth = require('../auth')
 const places = require('../models/places')
@@ -26,15 +26,46 @@ router.get('/check-availability', auth, async (req, res) => {
         console.log(startDate, endDate);
         const placeid = req.query.id;
 
-        const availableRooms = await places.findById(placeid);
+        const place = await places.findById(placeid);
+        const availableRoom = await bookPlaces.aggregate([{
+            $project: {
+                _id: 0,
+                Company: 1,
+                total: {
+                    $cond: [{
+                        $and: [
+                            { $eq: ['$placeId', ObjectId(req.query.id.toString())] },
+                            {
+
+
+                                $and: [
+                                    { $gte: ['$bookStartDate', new Date(req.body.bookStartDate)] },
+                                    { $lte: ['$bookEndDate', new Date(req.body.bookEndDate)] }]
+
+
+                            }]
+                    }, '$bookNoOfRoomsOrMembers', 0]
+                },
+
+            }
+        },
+        {
+            $group: {
+                _id: "$Company",
+                totl: { $sum: '$total' },
+
+            }
+        }])
 
         const existingbookedPlace = await bookPlaces.find({ placeId: placeid }).where("bookStartDate").lt(startDate).where("bookEndDate").gt(endDate)
 
-        if (existingbookedPlace.length !== 0 || availableRooms.availableRoomsOrMembers === 0) {
-            console.log("Booking not Available", existingbookedPlace)
-            return res.status(400).send({
-                error: "Booking not Available"
-            })
+        if (existingbookedPlace.length !== 0) {
+            if (place.roomOrMembers - availableRoom.totl > 0) {
+                console.log("Booking not Available", existingbookedPlace)
+                return res.status(400).send({
+                    error: "Booking not Available"
+                })
+            }
         }
         res.status(200).send()
 
@@ -47,9 +78,59 @@ router.get('/check-availability', auth, async (req, res) => {
 router.post('/book-place', auth, async (req, res) => {
     let filter = {}
     let bookPlace
+    console.log(new Date(req.body.bookStartDate).getDate(), " ", new Date(req.body.bookEndDate).getDate(), req.body.bookStartDate, req.body.bookEndDate);
+    console.log(bookPlaces.find({ placeId: req.query.id }).exec(async function (err, user) {
+        user.filter((item) => {
+
+            console.log(new Date(item.bookStartDate).toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "numeric",
+                year: "numeric",
+            }),
+                new Date(item.bookEndDate).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "numeric",
+                    year: "numeric",
+                }),
+                item.bookNoOfRoomsOrMembers
+            )
+        })
+    }
+    ));
     try {
+        const ObjectId = mongoose.Types.ObjectId;
         const place = await places.findById(req.query.id)
-        if (place.availableRoomsOrMembers > req.body.bookNoOfRoomsOrMembers) {
+        const availableRoom = await bookPlaces.aggregate([{
+            $project: {
+                _id: 0,
+                Company: 1,
+                total: {
+                    $cond: [{
+                        $and: [
+                            { $eq: ['$placeId', ObjectId(req.query.id.toString())] },
+                            {
+
+
+                                $and: [
+                                    { $gte: ['$bookStartDate', new Date(req.body.bookStartDate)] },
+                                    { $lte: ['$bookEndDate', new Date(req.body.bookEndDate)] }]
+
+
+                            }]
+                    }, '$bookNoOfRoomsOrMembers', 0]
+                },
+
+            }
+        },
+        {
+            $group: {
+                _id: "$Company",
+                totl: { $sum: '$total' },
+
+            }
+        }])
+        console.log(availableRoom[0].totl, place.roomOrMembers - availableRoom[0].totl);
+        if ((place.roomOrMembers - availableRoom[0].totl) > req.body.bookNoOfRoomsOrMembers) {
             filter = {
 
                 $and: [
@@ -88,7 +169,7 @@ router.post('/book-place', auth, async (req, res) => {
 
 
             const alreadyBookPlace = await bookPlaces.find({ ...filter })
-            console.log(alreadyBookPlace);
+
             if (alreadyBookPlace.length !== 0) {
                 return res.status(400).send({
                     error: "Already Booked"

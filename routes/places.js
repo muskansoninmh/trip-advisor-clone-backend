@@ -39,7 +39,7 @@ router.post('/place/:id/image', avatar.single('image'), async (req, res) => {
 
 router.post('/add-place', auth, async (req, res) => {
 
-    const place = new places({ ...req.body, userId: req.user._id, availableRoomsOrMembers: req.body.roomOrMembers })
+    const place = new places({ ...req.body, userId: req.user._id })
     try {
 
         await place.save()
@@ -54,18 +54,24 @@ router.post('/add-place', auth, async (req, res) => {
 
 router.get('/get-all-places', async (req, res) => {
 
-
     try {
 
         let filters = [{ $match: { isDeleted: false } }];
-        let sortFilter = { 'createdAt': -1 }
 
-        if (req.query.rating === true) {
+
+        if (req.query.rating) {
+
+
             filters.push({
                 $sort: {
                     averageRating: -1
                 }
 
+            })
+        }
+        else {
+            filters.push({
+                $sort: { createdAt: -1 }
             })
         }
         if (req.query.search) {
@@ -267,9 +273,7 @@ router.post('/edit-place/:id', auth, async (req, res) => {
 
 
             user[update] = req.body[update];
-            if (update === "roomOrMembers") {
-                user["availableRoomsOrMembers"] = req.body[update]
-            }
+
 
         });
 
@@ -382,7 +386,12 @@ router.get('/delete-review', auth, async (req, res) => {
 
         const index = place.reviews.findIndex(i => i.userId.toString() === req.user._id.toString())
 
-        let ar = ((place.averageRating * place.reviews.length) - place.reviews[index].rating) / (place.reviews.length - 1);
+        let ar =
+            (place.averageRating * place.reviews.length -
+                place.reviews[index].rating) /
+            (place.reviews.length === 1
+                ? place.reviews.length
+                : place.reviews.length - 1);
 
         place.reviews = await place.reviews.filter((rvw) =>
             rvw.userId.toString() !== req.user._id.toString())
