@@ -16,16 +16,15 @@ const avatar = multer({
     //     fileSize: 1000000
     // },
     fileFilter(req, file, cb) {
-        if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
+        if (!file.originalname.match(/\.(jpg|jpeg|png|jfif)$/)) {
             return cb(new Error('Please upload an image '))
         }
         cb(undefined, true)
     }
 })
 router.post('/places/:id/image', avatar.single('image'), async (req, res) => {
-    console.log(req.params.id)
-    const image = new images({ placesID: req.params.id })
-    console.log(image);
+   const image = new images({ placesID: req.params.id })
+
     const buffer = await sharp(req.file.buffer).resize({ width: 250, height: 250 }).png().toBuffer()
     image.avatar = buffer
     // console.log(image.avatar);

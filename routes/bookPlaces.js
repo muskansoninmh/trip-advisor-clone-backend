@@ -19,7 +19,7 @@ const razorpay = new Razorpay({
 })
 
 router.get('/check-availability', auth, async (req, res) => {
-
+    const ObjectId = mongoose.Types.ObjectId;
     try {
         const startDate = req.query.startDate;
         const endDate = req.query.endDate;
@@ -34,7 +34,7 @@ router.get('/check-availability', auth, async (req, res) => {
                 total: {
                     $cond: [{
                         $and: [
-                            { $eq: ['$placeId', ObjectId(req.query.id.toString())] },
+                            { $eq: ['$placeId',  ObjectId(req.query.id.toString())] },
                             {
 
 
@@ -60,7 +60,7 @@ router.get('/check-availability', auth, async (req, res) => {
         const existingbookedPlace = await bookPlaces.find({ placeId: placeid }).where("bookStartDate").lt(startDate).where("bookEndDate").gt(endDate)
 
         if (existingbookedPlace.length !== 0) {
-            if (place.roomOrMembers - availableRoom.totl > 0) {
+            if (place.roomOrMembers - availableRoom?.totl > 0) {
                 console.log("Booking not Available", existingbookedPlace)
                 return res.status(400).send({
                     error: "Booking not Available"
@@ -129,8 +129,8 @@ router.post('/book-place', auth, async (req, res) => {
 
             }
         }])
-        console.log(availableRoom[0].totl, place.roomOrMembers - availableRoom[0].totl);
-        if ((place.roomOrMembers - availableRoom[0].totl) > req.body.bookNoOfRoomsOrMembers) {
+        // console.log(availableRoom[0].totl, place.roomOrMembers - availableRoom[0].totl);
+        if ((place.roomOrMembers - availableRoom[0]?.totl) > req.body.bookNoOfRoomsOrMembers || !availableRoom[0]?.totl) {
             filter = {
 
                 $and: [
@@ -176,7 +176,7 @@ router.post('/book-place', auth, async (req, res) => {
                 })
             }
             bookPlace = new bookPlaces({ ...req.body, userId: req.user._id, placeId: req.query.id });
-            place.availableRoomsOrMembers -= bookPlace.bookNoOfRoomsOrMembers;
+         
             bookPlace.book = true;
             await place.save();
             await bookPlace.save();

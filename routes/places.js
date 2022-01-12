@@ -59,7 +59,7 @@ router.get('/get-all-places', async (req, res) => {
         let filters = [{ $match: { isDeleted: false } }];
 
 
-        if (req.query.rating) {
+        if (req.query.rating === 'true') {
 
 
             filters.push({
@@ -165,7 +165,7 @@ router.get('/get-all-places', async (req, res) => {
         res.status(400).send(e)
     }
 })
-router.get('/get-one-place-of-each-city', async (req, res) => {
+router.get('/get-one-place-of-each-state', async (req, res) => {
 
     const state = [];
     const uniqueplace = []
@@ -175,7 +175,7 @@ router.get('/get-one-place-of-each-city', async (req, res) => {
 
         places.find({ ...filter }).sort({ 'createdAt': -1 }).limit(Number(req.query.limit)).skip(Number(req.query.skip)).exec(async function (err, user) {
             user.map((row) => {
-                console.log(row.state.name)
+              
                 if (!state.includes(row.state.name)) { state.push(row.state.name); uniqueplace.push(row) }
             }
             )
@@ -245,7 +245,7 @@ router.get('/get-place/:id', async (req, res) => {
 
 
 router.post('/edit-place/:id', auth, async (req, res) => {
-    console.log(req.body);
+
     const updates = Object.keys(req.body)
     const allowedUpdates = ['name', 'description', "category", "country", "city", "state", "season", "month", "package", "address", "openingHours", "closingHours", "contactNo", "website", "roomOrMembers"]
 
@@ -277,10 +277,9 @@ router.post('/edit-place/:id', auth, async (req, res) => {
 
         });
 
-        console.log("sllhjdjl", user);
+      
         await user.save()
 
-        console.log("sllhjdjl", user);
         res.send(user)
     }
     catch (e) {
@@ -360,14 +359,18 @@ router.post('/add-review', auth, async (req, res) => {
 
             review: req.body.review,
             rating: req.body.rating,
-            UserName: req.user.first_name + " " + req.user.last_name,
+             
             userId: req.user._id
 
         })
-
+        place.averageRating = 0;
         let ar = ((place.averageRating * (place.reviews.length - 1)) + (req.body.rating)) / place.reviews.length
+
         console.log(ar);
         place.averageRating = ar.toFixed(2);
+        if(place.averageRating === 0) {
+            place.averageRating = req.body.rating
+        }
         await place.save();
         res.status(201).send(place.reviews[place.reviews.length - 1])
     }
@@ -452,7 +455,7 @@ router.post('/edit-review', auth, async (req, res) => {
             { arrayFilters: [{ 'element.userId': req.user._id }], "new": true },
             (err, plc) => {
                 if (err) res.status(400)
-                console.log(plc.reviews);
+                // console.log(plc.reviews);
                 res.status(200)
                     .send({ review: plc.reviews[index], averageRating: plc.averageRating })
             }
@@ -505,7 +508,7 @@ router.get('/sales', auth, async (req, res) => {
             }
 
         ])
-        console.log(sales);
+        // console.log(sales);
         let filter = { isDeleted: false, userId: req.user._id }
 
 
