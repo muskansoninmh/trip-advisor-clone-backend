@@ -2,39 +2,30 @@ const express = require('express')
 
 const router = new express.Router()
 const auth = require('../auth')
+const { cloudinary } = require('../utlis/cloudinary');
 
-const multer = require('multer')
-const sharp = require('sharp')
 const places = require('../models/places')
 const users = require('../models/users')
 const cartPlaces = require('../models/cartPlaces')
 const { findOne } = require('../models/users')
 const bookPlaces = require('../models/bookPlaces')
 
-const avatar = multer({
 
-    // limits: {
-    //     fileSize: 1000000
-    // },
-    fileFilter(req, file, cb) {
-        if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
-            return cb(new Error('Please upload an image '))
-        }
-        cb(undefined, true)
+router.post('/place/:id/image',  async (req, res) => {
+    const place = await places.findById(req.params.id);
+    const fileStr = req.body.fileStr;
+      try { const uploadResponse = await cloudinary.uploader.upload(fileStr, {
+            upload_preset: 'tripAdvisor',
+        });
+        place.avatar = uploadResponse.public_id;
+        await place.save();
+        res.status(201).send(place.avatar);
+        
     }
-})
-router.post('/place/:id/image', avatar.single('image'), async (req, res) => {
-
-    const place = await places.findById(req.params.id)
-    const buffer = await sharp(req.file.buffer).png().toBuffer()
-    place.avatar = buffer
-    // console.log(place.avatar);
-    await place.save()
-    // console.log("req--->", place._id)
-    res.set("Content-Type", 'image/jpg')
-    res.send(new Buffer(place.avatar).toString('base64'))
-}, (error, req, res, next) => {
-    res.status(400).send({ error: error.message })
+    catch(e) {
+        res.status(400).send({error : "Unable to upload an image"})
+    }
+  
 })
 
 router.post('/add-place', auth, async (req, res) => {
@@ -173,23 +164,34 @@ router.get('/get-one-place-of-each-state', async (req, res) => {
 
         let filter = { isDeleted: false }
 
-        places.find({ ...filter }).sort({ 'createdAt': -1 }).limit(Number(req.query.limit)).skip(Number(req.query.skip)).exec(async function (err, user) {
-            user.map((row) => {
-              
-                if (!state.includes(row.state.name)) { state.push(row.state.name); uniqueplace.push(row) }
-            }
-            )
+    
+        // const place = await places.find({...filter}).sort({ 'createdAt': -1 }).limit(Number(req.query.limit)).skip(Number(req.query.skip)).distinct('state.id')
+  
+        const place = await places.aggregate([
+            {$match :  {'isDeleted' : false}},
+            {$sort : { 'createdAt': -1 }},
+           
+            {
+             $group : {
+                  "_id" : "$state.name",
+                 
+                  "placeId" :{ "$first" : "$_id" },
+                  "country" :{"$first"  :"$country.name"},
+                  "avatar" :{"$first": "$avatar"}
 
-            res.status(200).send({ uniqueplace })
-
-        })
-        // }
+                 } 
+        },
+        {$limit : Number(req.query.limit)},
+    ])
+        console.log(place.length)
+        res.status(200).send({place})
 
 
 
 
     }
     catch (e) {
+        console.log(e)
         res.status(400).send(e)
     }
 })

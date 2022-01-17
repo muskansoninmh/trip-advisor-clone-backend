@@ -60,7 +60,7 @@ router.get('/check-availability', auth, async (req, res) => {
         const existingbookedPlace = await bookPlaces.find({ placeId: placeid }).where("bookStartDate").lt(startDate).where("bookEndDate").gt(endDate)
 
         if (existingbookedPlace.length !== 0) {
-            if (place.roomOrMembers - availableRoom?.totl > 0) {
+            if (place.roomOrMembers - availableRoom[0]?.totl > 0) {
                 console.log("Booking not Available", existingbookedPlace)
                 return res.status(400).send({
                     error: "Booking not Available"

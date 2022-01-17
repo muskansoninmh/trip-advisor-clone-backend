@@ -5,7 +5,7 @@ const mongoose = require('mongoose')
 const imagesSchema = mongoose.Schema({
 
     avatar: {
-        type: Buffer
+        type: String
     },
 
     placesID:

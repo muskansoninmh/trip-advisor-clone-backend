@@ -3,38 +3,32 @@ const express = require('express')
 
 const router = new express.Router()
 const auth = require('../auth')
-
+const { cloudinary } = require('../utlis/cloudinary');
 const multer = require('multer')
 const sharp = require('sharp')
 const images = require('../models/images')
 const users = require('../models/users')
 
 
-const avatar = multer({
 
-    // limits: {
-    //     fileSize: 1000000
-    // },
-    fileFilter(req, file, cb) {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|jfif)$/)) {
-            return cb(new Error('Please upload an image '))
-        }
-        cb(undefined, true)
-    }
-})
-router.post('/places/:id/image', avatar.single('image'), async (req, res) => {
+router.post('/places/:id/image',  async (req, res) => {
    const image = new images({ placesID: req.params.id })
 
-    const buffer = await sharp(req.file.buffer).resize({ width: 250, height: 250 }).png().toBuffer()
-    image.avatar = buffer
-    // console.log(image.avatar);
-    await image.save();
+   const fileStr = req.body.fileStr;
+   try { 
+       const uploadResponse = await cloudinary.uploader.upload(fileStr, {
+         upload_preset: 'tripAdvisor',
+     });
+     image.avatar = uploadResponse.public_id;
+     await image.save();
+     res.status(201).send(image);
+     
+ }
+ catch(e) {
+     res.status(400).send({error : "Unable to Upload Image"})
+ }
+    
 
-    // console.log("req--->", image._id)
-    res.set("Content-Type", 'image/jpg')
-    res.send(image)
-}, (error, req, res, next) => {
-    res.status(400).send({ error: error.message })
 })
 router.get('/get-images/:id', async (req, res) => {
     try {
@@ -55,14 +49,14 @@ router.get('/delete-image/:id', async (req, res) => {
 
     const image = await images.findById({ _id: req.params.id })
 
-    console.log(image.isDeleted);
+
 
     try {
 
         image.isDeleted = true;
         await image.save()
 
-        res.status(201).send(image)
+        res.status(200).send(image)
 
     }
     catch (e) {

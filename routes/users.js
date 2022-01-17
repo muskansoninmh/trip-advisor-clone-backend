@@ -154,7 +154,7 @@ router.get('/users/get-all-users', async (req, res) => {
 
         users.find({ ...filter }).sort({ 'createdAt': -1 }).limit(Number(req.query.limit)).skip(Number(req.query.skip)).exec(async function (err, user) {
             const count = await users.find({ ...filter }).count({});
-            console.log(user);
+         
             res.send({ user, count })
 
         })

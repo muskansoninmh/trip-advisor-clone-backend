@@ -7,7 +7,7 @@ function setDecimalNumber(val) { return (val); }
 const placesSchema = mongoose.Schema({
 
     avatar: {
-        type: Buffer
+        type: String
     },
 
     name: {
