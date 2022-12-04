@@ -39,7 +39,7 @@ router.post('/register-user', async (req, res) => {
 
 router.post('/login-user', async (req, res) => {
     try {
-        console.log(req.body.password,)
+      
         const user = await users.findByCredentials(req.body.email, req.body.password)
 
 
@@ -90,7 +90,7 @@ router.post('/add-admin', auth, async (req, res) => {
 router.post('/add-users', async (req, res) => {
 
     const user = new users({ first_name: req.body.first_name, last_name: req.body.last_name, birth_date: req.body.birth_date, email: req.body.email, salary: req.body.salary, department: req.body.department, joining_date: req.body.joining_date, number: req.body.number })
-    console.log(req.body);
+  
     try {
         const validEmail = await users.findOne({ isDeleted: false, email: req.body.email })
         if (validEmail) {
@@ -260,7 +260,7 @@ router.post('/edit-users/:id', auth, async (req, res) => {
     const isValid = updates.every((update) => allowedUpdates.includes(update))
 
     if (!isValid) {
-        // console.log("sdkjsdkl");
+       
         return res.status(404).send({ error: 'Invalid Update' })
 
     }
